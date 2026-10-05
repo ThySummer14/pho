@@ -66,3 +66,8 @@ test('slow section practice aligns countdown, input, pause, retry and return to 
  tick(audio.currentTime+24);assert.match(el('panel').innerHTML,/75% · 90 BPM/);assert.match(el('panel').innerHTML,/不计入整曲最佳/);
  el('home').onclick();await el('start').onclick();tick(audio.currentTime+2.15);key('Space');frame();assert.equal(el('score').textContent,'001000');assert.doesNotMatch(el('runMode').textContent,/75%/);key('Escape');el('home').onclick();el('practiceRate').value='1';
 });
+test('phrase result focuses four bars and repeated retry keeps its range',async()=>{
+ await el('start').onclick();tick(audio.currentTime+69);assert.match(el('panel').innerHTML,/第 1–4 小节/);assert.match(el('panel').innerHTML,/乐句回放/);
+ await el('phrase3').onclick();tick(audio.currentTime+2.2);assert.match(el('time').textContent,/8 秒/);key('KeyR');await Promise.resolve();tick(audio.currentTime+2.2);assert.match(el('time').textContent,/8 秒/);
+ tick(audio.currentTime+10);assert.match(el('panel').innerHTML,/第 13–16 小节/);assert.match(el('panel').innerHTML,/不计入整曲最佳/);el('home').onclick();
+});
