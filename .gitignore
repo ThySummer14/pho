@@ -1,0 +1,14 @@
+# Local verification artifacts and workspace metadata
+output/
+.playwright-cli/
+.openai/
+.DS_Store
+
+# Dependencies and logs
+node_modules/
+*.log
+
+# Local credentials
+.env
+.env.*
+!.env.example
