@@ -22,7 +22,7 @@ const polygon=(g,points)=>{
 const line=(g,x1,y1,x2,y2)=>{g.beginPath();g.moveTo(x1,y1);g.lineTo(x2,y2);g.stroke();};
 
 export class Scene {
- constructor(){this.effects=[];this.reduced=false;}
+ constructor(){this.effects=[];this.reduced=false;this.colors=null;}
  clear(){this.effects=[];}
  hit(result,position,now,combo=0){
   this.effects.push({kind:result.kind,position,time:now,combo});
@@ -30,9 +30,10 @@ export class Scene {
  }
  palette(beat){
   const {section,previous,blend}=sectionAt(beat),a=themes[previous],b=themes[section];
-  return {color:mix(a.color,b.color,blend),sky:mix(a.sky,b.sky,blend)};
+  return {color:mix(this.colors?.[previous]||a.color,this.colors?.[section]||b.color,blend),sky:mix(a.sky,b.sky,blend)};
  }
- backdrop(g,w,h,beat,now,home=false){
+ backdrop(g,w,h,beat,now,home=false,pulseBeat=beat){
+  if(this.flavor&&this.flavor!=='echo')return this.genreBackdrop(g,w,h,beat,now,home,pulseBeat);
   const {color,sky}=this.palette(beat),{section,previous,blend}=sectionAt(beat);
   const a=themes[previous],b=themes[section],depth=a.depth+(b.depth-a.depth)*blend;
   const height=a.height+(b.height-a.height)*blend,horizon=h*depth,vx=w*.72;
@@ -213,6 +214,42 @@ export class Scene {
   edgeShade.addColorStop(.80,'rgba(3,6,11,0)');edgeShade.addColorStop(1,'rgba(3,6,11,.22)');
   g.fillStyle=edgeShade;g.fillRect(0,0,w,h);
   g.restore();return rgb(color);
+ }
+ genreBackdrop(g,w,h,beat,now,home,pulseBeat){
+  const {color}=this.palette(beat),accent=rgb(color),energy=this.energy??.65;
+  const motion=this.reduced?0:now/1000,pulse=this.reduced?0:Math.exp(-(Math.max(0,pulseBeat)%1)*6)*energy;
+  const sky=g.createLinearGradient(0,0,0,h);sky.addColorStop(0,this.flavor==='bossa'?'#101d20':this.flavor==='synthwave'?'#170d2b':'#061c2a');sky.addColorStop(1,'#050b15');
+  g.save();g.fillStyle=sky;g.fillRect(0,0,w,h);
+  const cx=w*.76,cy=h*.64;
+  if(this.flavor==='bossa'){
+   // Courtyard arches and broad foliage, never note-sized shapes near the rail.
+   const glow=g.createRadialGradient(w*.77,h*.29,0,w*.77,h*.29,h*.5);glow.addColorStop(0,rgb(color,.17));glow.addColorStop(1,rgb(color,0));g.fillStyle=glow;g.fillRect(0,0,w,h);
+   for(let i=0;i<5;i++){
+    const x=w*(.49+i*.13),r=w*.048,y=h*.56;g.strokeStyle=rgb(color,.18);g.lineWidth=6;g.beginPath();g.arc(x,y,r,Math.PI,Math.PI*2);g.lineTo(x+r,h*.86);g.stroke();line(g,x-r,y,x-r,h*.86);
+   }
+   for(let i=0;i<7;i++){
+    const x=w*(.59+i*.073),y=h*(.72+(i%2)*.05),sway=Math.sin(motion*.35+i)*8;
+    g.fillStyle=rgb(color,.09);g.beginPath();g.arc(x+sway,y,25+i%3*16,0,Math.PI*2);g.fill();g.strokeStyle=rgb(color,.24);g.lineWidth=2;line(g,x,y+h*.10,x+sway,y);
+   }
+   g.strokeStyle=rgb(color,.16);g.lineWidth=1;for(let i=0;i<8;i++)line(g,w*.46,h*(.80+i*.023),w,h*(.80+i*.023));
+  }else if(this.flavor==='synthwave'){
+   // The horizon disc and perspective grid breathe on beats, while the hit ring is fixed.
+   g.fillStyle=rgb(color,.10+pulse*.025);g.beginPath();g.arc(cx,h*.38,h*.15,0,Math.PI*2);g.fill();
+   g.strokeStyle=rgb(color,.13);g.lineWidth=1;
+   for(let i=0;i<16;i++)line(g,cx,cy,w*(.23+i*.07),h);
+   for(let i=0;i<12;i++){const t=(i/12+(this.reduced?0:motion*.04))%1,y=cy+(h-cy)*t*t;line(g,w*.22,y,w,y);}
+   for(let i=0;i<9;i++){const x=w*(.48+i*.067),height=h*(.08+(i*7%5)*.024);g.fillStyle='#100e25';g.fillRect(x,cy-height,w*.035,height);g.strokeStyle=rgb(color,.26);line(g,x,cy-height,x+w*.035,cy-height);}
+  }else{
+   // Slow liquid ribbons preserve the drum-and-bass clearing; no full-screen flashes.
+   for(let layer=0;layer<8;layer++){
+    g.strokeStyle=rgb(color,.05+layer*.013+pulse*.01);g.lineWidth=1+layer*.35;g.beginPath();
+    for(let i=0;i<=40;i++){const x=w*i/40,y=h*(.67+layer*.032)+Math.sin(i*.18+layer*.4+motion*.3)*(12+energy*14);if(i===0)g.moveTo(x,y);else g.lineTo(x,y);}g.stroke();
+   }
+   for(let i=0;i<9;i++){const x=w*(.55+i*.054),y=h*(.18+(i*7%8)*.037);g.strokeStyle=rgb(color,.15);g.lineWidth=1;line(g,x,y,x+w*.023,y-h*.022);}
+  }
+  const shade=g.createLinearGradient(0,0,w,0);shade.addColorStop(0,'#060c17e8');shade.addColorStop(.45,'#060c1740');shade.addColorStop(1,'#060c1720');g.fillStyle=shade;g.fillRect(0,0,w,h);
+  if(!home){const clear=g.createLinearGradient(0,h*.30,0,h*.66);clear.addColorStop(0,'#050c1400');clear.addColorStop(.45,'#050c14b8');clear.addColorStop(1,'#050c1400');g.fillStyle=clear;g.fillRect(0,h*.30,w,h*.36);}
+  g.restore();return accent;
  }
  renderEffects(g,xy,now){
   this.effects=this.effects.filter(e=>now-e.time<effectLife(e.kind));

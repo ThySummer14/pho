@@ -56,5 +56,42 @@ export class Music {
   }
   for(const n of notes){if(n.beat<startBeat||n.beat>=endBeat)continue;const pitch=notePitch(n),duration=Math.min(.34,n.nextIntervalBeats*.36)/rate;this.tone(time(n.beat),pitch,duration,.095,'triangle');this.tone(time(n.beat),pitch*2,.08,.035);}
  }
- stop(){for(const n of this.nodes){n.onended=null;try{n.stop();n.disconnect();}catch{}}this.nodes=[];this.musicBus.disconnect();this.sfxBus.disconnect();this.bus.disconnect();}
+ prepareMaster(buffer,startAudio,startBeat,endBeat,bpm,full=false){
+  const source=this.ctx.createBufferSource(),gain=this.ctx.createGain(),offset=startBeat*60/bpm;
+  const duration=Math.max(0,Math.min(buffer.duration-offset,(endBeat-startBeat)*60/bpm+(full?1.2:0)));
+  source.buffer=buffer;gain.gain.setValueAtTime(1,startAudio);gain.gain.setValueAtTime(1,startAudio+Math.max(0,duration-.04));gain.gain.exponentialRampToValueAtTime(.0001,startAudio+duration);
+  source.connect(gain);gain.connect(this.musicBus);this.track(source,[gain]);source.start(startAudio,offset,duration);
+ }
+ // Rolling lookahead bounds native audio nodes for longer multitrack songs.
+ prepareScore(score,startAudio,startBeat,endBeat,rate=1){
+  const seconds=60/(score.bpm*rate);this.scoreSeconds=seconds;
+  this.queue=score.tracks.flatMap(track=>track.events.filter(e=>e[0]>=startBeat&&e[0]<endBeat).map(event=>({track,event,time:startAudio+(event[0]-startBeat)*seconds}))).sort((a,b)=>a.time-b.time);this.queueCursor=0;this.pump();
+ }
+ pump(){
+  if(!this.queue)return;
+  while(this.queueCursor<this.queue.length&&this.queue[this.queueCursor].time<this.ctx.currentTime+.35){
+   const item=this.queue[this.queueCursor++];
+   // After a long main-thread stall, skip stale sound rather than emit a burst.
+   if(item.time<this.ctx.currentTime-.05)continue;
+   this.voice(item.track,item.event,Math.max(this.ctx.currentTime+.001,item.time),this.scoreSeconds);
+  }
+ }
+ voice(track,event,time,seconds){
+  const [,pitch,length,velocity]=event,hz=midi(pitch),v=Math.max(.02,Math.min(1,velocity)),d=Math.max(.04,Math.min(4,length)*seconds);
+  switch(track.kind){
+   case 'kick':this.tone(time,125,.16,.19*v,'sine',42);break;
+   case 'snare':this.hat(time,.09*v,this.musicBus,1800,.12);this.tone(time,185,.055,.025*v,'triangle',95);break;
+   case 'rim':this.tone(time,970,.032,.095*v,'triangle',440);break;
+   case 'hat':this.hat(time,.037*v,this.musicBus,6800,.055);break;
+   case 'tom':this.tone(time,hz*2,.17,.12*v,'sine',hz);break;
+   case 'bass':this.tone(time,hz,d,.13*v,'triangle');break;
+   case 'pad':this.tone(time,hz,d,.035*v,'sine',undefined,this.musicBus,.04);break;
+   case 'flute':this.tone(time,hz,d,.14*v,'sine',undefined,this.musicBus,.008);this.tone(time,hz*2,d*.65,.02*v);break;
+   case 'lead':this.tone(time,hz,d,.105*v,'triangle',undefined,this.musicBus,.005);break;
+   case 'bell':this.tone(time,hz,d,.11*v);this.tone(time,hz*2.76,d*.45,.025*v);break;
+   case 'epiano':this.tone(time,hz,d,.085*v);this.tone(time,hz*2,d*.25,.02*v);break;
+   default:this.tone(time,hz,d,.075*v,'triangle',undefined,this.musicBus,.002);
+  }
+ }
+ stop(){this.queue=null;this.queueCursor=0;for(const n of this.nodes){n.onended=null;try{n.stop();n.disconnect();}catch{}}this.nodes=[];this.musicBus.disconnect();this.sfxBus.disconnect();this.bus.disconnect();}
 }

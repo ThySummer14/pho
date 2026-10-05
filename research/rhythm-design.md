@@ -60,3 +60,13 @@ osu! 官方将 **active hitsound** 描述为点击时的清晰冲击，用于感
 本项目取舍：增加 75/85/100/115% 分段练习，通过重排已有合成器的音符保持原音高；速度变化不缩放真实毫秒判定窗，成绩仍隔离。75% 拆开密集拍，85% 接近原速，115% 为自选加速练习。没有引入第三方乐曲、谱面、图像或代码。
 
 第二轮把上述真实时间误差应用到四小节诊断：平均误差描述偏向，标准差描述稳定性，少样本不作强结论。推荐局部重练以降低重复整段的成本。这个练习长度与推荐公式为本项目设计，并非从 osu! 移植。
+
+## 曲库扩展调研与取舍
+
+- [osu! 官方谱面标准](https://osu.ppy.sh/wiki/en/Ranking_criteria/osu!)：音符贴合明确声音，按乐句组织并避免无依据的难度尖峰。本项目：逐音绑定原谱声部，保留长笛/主音的留白；不把所有鼓点都变成目标。
+- [ADOFAI 开发者介绍](https://store.steampowered.com/app/977950/A_Dance_of_Fire_and_Ice/)：路线提示未来节奏与不同世界的节奏风格。本项目：保留一致的每拍横向距离，新曲的间隔和转折源于自己的乐谱。
+- [Phigros 开发者介绍](https://play.google.com/store/apps/details?id=com.PigeonGames.Phigros)：动态判定线和曲目视觉身份。本项目：保留固定打击点，庭院/公路/流体三种背景随曲式强弱变化，不复制移动判定线而破坏已有可读性。
+- [Arcaea 开发者介绍](https://play.google.com/store/apps/details?id=moe.low.arc&hl=en)：每曲多档谱面。当前三个新曲已是不同谱面而非原谱换音色；同曲多套谱面仍可作为下一步，不能把判定窗口档位描述为已实现多套谱面。
+- [Rhythm Doctor 开发者介绍](https://store.steampowered.com/app/774181/Rhythm_Doctor/)：单键操作仍可逐关引入不同节奏概念。本项目把 Bossa 切分、Synthwave 主音呼吸、DnB 应答分别作为读谱重点；没有复制第七拍规则、故事、音乐或画面。
+
+技术选择参考 [AudioBufferSourceNode.start](https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode/start)：when 使用 AudioContext 时间，offset 选取录音中的开始位置。原速 master 走同一个音频时钟，变速练习单列；不在两个独立时钟之间猜测同步。

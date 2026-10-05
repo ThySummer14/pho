@@ -62,3 +62,14 @@ test('reduced impacts omit rays and particles, and every feedback grade releases
   assert.equal(scene.effects.length,0);
  }
 });
+test('song-specific courtyard, highway and liquid scenes are finite, distinct and motion-reduced',()=>{
+ const shapes=[];
+ for(const flavor of ['bossa','synthwave','breakbeat']){
+  const s=new Scene();s.flavor=flavor;s.colors=themes.map(x=>x.color);s.energy=.3;
+  const a=canvas();s.backdrop(a.g,390,844,50,10000,false,80);shapes.push(a.calls);
+  for(const c of a.calls)for(const x of c.slice(1))if(typeof x==='number')assert.ok(Number.isFinite(x));
+  assert.equal(a.calls.filter(c=>c[0]==='save').length,a.calls.filter(c=>c[0]==='restore').length);
+  s.reduced=true;const b=canvas(),c=canvas();s.backdrop(b.g,390,844,50,1000,false,80);s.backdrop(c.g,390,844,50,19000,false,80.5);assert.deepEqual(b.calls,c.calls);
+ }
+ assert.notDeepEqual(shapes[0],shapes[1]);assert.notDeepEqual(shapes[1],shapes[2]);
+});

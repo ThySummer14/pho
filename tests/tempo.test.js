@@ -12,7 +12,7 @@ for(const rate of [.75,.85,1,1.15])test(`tempo ${rate} keeps real millisecond wi
   j.rollback(65);assert.equal(j.results.size,1);assert.equal(j.combo,1);
   assert.equal(j.press(65/(2*rate)+.06).kind,'perfect');assert.equal(j.stats().score,2000);
  }
- const j=new Judge(notes,64,68,0,'challenge',rate);j.press(64/(2*rate));j.press(67/(2*rate));assert.equal(j.events.at(-1).beat,67);j.rollback(66);assert.equal(j.strays,0);
+ const j=new Judge(notes,64,68,0,'challenge',rate);j.press(64/(2*rate));j.press(67/(2*rate));assert.ok(Math.abs(j.events.at(-1).beat-67)<1e-8);j.rollback(66);assert.equal(j.strays,0);
 });
 test('tempo scheduling aligns every melody onset and preserves oscillator pitch',()=>{
  for(const rate of [.75,.85,1,1.15]){
