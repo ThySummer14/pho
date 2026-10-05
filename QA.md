@@ -92,3 +92,10 @@ Visual fixes after inspection: practice-end section label clamped to its own sec
 
 ## Not verified
 Actual browser blur/background interruption, MacBook/Safari input/output latency, Bluetooth, subjective listening quality and new-player learning/fun. Engine sampling tests are not hardware latency tests.
+
+## 后续迭代 1：变速练习
+
+- 上游基线：77c6c591，42/42 Node 测试通过。
+- 本轮：49/49 测试通过；覆盖四种速度的正负判定边界、偏移、漏拍、回滚、合成主音排程及音高、暂停/继续/R 重试/返回整曲。
+- 回归测试发现段落开始浮点误差可能显示上一章，已把章索引限制在本轮起点之后。
+- 浏览器验证进行中；Node 生命周期模拟不等于真实设备试玩。未声称已经听测。

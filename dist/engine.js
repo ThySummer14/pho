@@ -5,13 +5,14 @@ export const PROFILES={
  challenge:{label:'挑战',perfect:PERFECT,good:GOOD,window:GOOD,breakOnStray:true,guard:0}
 };
 export class Judge {
- constructor(notes,start=0,end=128,offset=0,profile='challenge'){
+ constructor(notes,start=0,end=128,offset=0,profile='challenge',rate=1){
+  this.rate=Number.isFinite(rate)&&rate>=.5&&rate<=1.5?rate:1;
   this.notes=notes.filter(n=>n.beat>=start&&n.beat<end);this.offset=offset;
   this.profile=PROFILES[profile]||PROFILES.challenge;this.reset();
  }
  reset(){this.results=new Map();this.events=[];this.combo=0;this.maxCombo=0;this.strays=0;this.lastPress=-Infinity;}
  // Frame expiry can leave a short dispatch grace. Inputs still use their event timestamp.
- expire(songTime,grace=0){const t=songTime-this.offset-grace;for(const n of this.notes)if(!this.results.has(n.id)&&t-n.beat/2>this.profile.window+EPS)this.settle(n,'miss',null);}
+ expire(songTime,grace=0){const t=songTime-this.offset-grace;for(const n of this.notes)if(!this.results.has(n.id)&&t-n.beat/(2*this.rate)>this.profile.window+EPS)this.settle(n,'miss',null);}
  settle(n,kind,error){
   if(this.results.has(n.id))return null;
   if(kind==='miss')this.combo=0;else this.combo++;
@@ -21,10 +22,10 @@ export class Judge {
  press(songTime){
   this.expire(songTime);const t=songTime-this.offset;
   let candidate=null,distance=Infinity;
-  for(const n of this.notes){const d=Math.abs(t-n.beat/2);if(!this.results.has(n.id)&&d<=this.profile.window+EPS&&d<distance-EPS){candidate=n;distance=d;}}
+  for(const n of this.notes){const d=Math.abs(t-n.beat/(2*this.rate));if(!this.results.has(n.id)&&d<=this.profile.window+EPS&&d<distance-EPS){candidate=n;distance=d;}}
   if(!candidate){
    if(songTime-this.lastPress<this.profile.guard-EPS)return {kind:'ignored'};
-   if(this.profile.breakOnStray)this.combo=0;this.strays++;const r={kind:'stray',beat:t*2,combo:this.combo};this.events.push(r);return r;
+   if(this.profile.breakOnStray)this.combo=0;this.strays++;const r={kind:'stray',beat:t*2*this.rate,combo:this.combo};this.events.push(r);return r;
   }
   this.lastPress=songTime;
   const error=t-candidate.beat/2;

@@ -58,3 +58,11 @@ test('section practice starts in its own chapter and blocks shortcuts while choo
  el('practiceAll').onclick();assert.equal(el('practiceDialog').open,true);assert.equal(key('Enter'),false);
  await el('sectionPractice2').onclick();assert.equal(el('practiceDialog').open,false);tick(audio.currentTime+3);assert.equal(el('section').textContent,'03 / 回声');assert.match(el('runMode').textContent,/暖身/);key('Escape');el('home').onclick();
 });
+test('slow section practice aligns countdown, input, pause, retry and return to full speed',async()=>{
+ el('practiceRate').value='.75';await el('sectionPractice2').onclick();const start=audio.currentTime+.15+4/1.5;
+ tick(start);key('Space');frame();assert.equal(el('score').textContent,'001000');assert.match(el('runMode').textContent,/75% · 90 BPM/);assert.match(el('time').textContent,/21 秒/);
+ tick(start+1);key('Escape');await el('resume').onclick();tick(audio.currentTime+.15+4/1.5);key('Space');frame();assert.equal(el('score').textContent,'001000');
+ key('KeyR');await Promise.resolve();assert.match(el('runMode').textContent,/75%/);tick(audio.currentTime+.15+4/1.5);frame();assert.equal(el('score').textContent,'000000');assert.match(el('section').textContent,/03/);
+ tick(audio.currentTime+24);assert.match(el('panel').innerHTML,/75% · 90 BPM/);assert.match(el('panel').innerHTML,/不计入整曲最佳/);
+ el('home').onclick();await el('start').onclick();tick(audio.currentTime+2.15);key('Space');frame();assert.equal(el('score').textContent,'001000');assert.doesNotMatch(el('runMode').textContent,/75%/);key('Escape');el('home').onclick();el('practiceRate').value='1';
+});

@@ -41,19 +41,20 @@ export class Music {
    this.tone(t,1568,.068,.011,'sine',undefined,bus,.001);
   }
  }
- schedule(notes,startAudio,startBeat,endBeat){
-  const time=b=>startAudio+(b-startBeat)/2;
+ schedule(notes,startAudio,startBeat,endBeat,rate=1){
+  rate=Number.isFinite(rate)&&rate>=.5&&rate<=1.5?rate:1;
+  const time=b=>startAudio+(b-startBeat)/(2*rate);
   for(let b=startBeat;b<endBeat;b++){
    const bar=Math.floor(b/4),root=roots[Math.floor(bar/2)%4],section=Math.floor(b/32);
    // The quiet second section leaves more air; later sections gain offbeat texture.
    if(section!==1||b%2===0)this.tone(time(b),115,.16,.16,'sine',42);
    this.hat(time(b),b%2===1?.055:.018);
    if(section>=2&&b%2===1)this.hat(time(b+.5),.016);
-   if(b%2===0)this.tone(time(b),midi(root),.37,.08,'triangle');
-   if(b%4===0)for(const n of [root+12,root+15,root+19])this.tone(time(b),midi(n),1.75,.022,'sine');
-   if(section===3&&b%4===0)this.tone(time(b),midi(root+31),1.4,.013,'sine');
+   if(b%2===0)this.tone(time(b),midi(root),.37/rate,.08,'triangle');
+   if(b%4===0)for(const n of [root+12,root+15,root+19])this.tone(time(b),midi(n),1.75/rate,.022,'sine');
+   if(section===3&&b%4===0)this.tone(time(b),midi(root+31),1.4/rate,.013,'sine');
   }
-  for(const n of notes){if(n.beat<startBeat||n.beat>=endBeat)continue;const pitch=notePitch(n),duration=Math.min(.34,n.nextIntervalBeats*.36);this.tone(time(n.beat),pitch,duration,.095,'triangle');this.tone(time(n.beat),pitch*2,.08,.035);}
+  for(const n of notes){if(n.beat<startBeat||n.beat>=endBeat)continue;const pitch=notePitch(n),duration=Math.min(.34,n.nextIntervalBeats*.36)/rate;this.tone(time(n.beat),pitch,duration,.095,'triangle');this.tone(time(n.beat),pitch*2,.08,.035);}
  }
  stop(){for(const n of this.nodes){n.onended=null;try{n.stop();n.disconnect();}catch{}}this.nodes=[];this.musicBus.disconnect();this.sfxBus.disconnect();this.bus.disconnect();}
 }
