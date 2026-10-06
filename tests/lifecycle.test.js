@@ -118,3 +118,7 @@ test('calibration audio unlock has the same touch cancellation escape route',asy
 test('read-ahead stays hidden during count-in and returns after the first beat',async()=>{
  await el('start').onclick();tick(audio.currentTime);assert.equal(el('nextCue').hidden,true);tick(audio.currentTime+2.16);assert.equal(el('nextCue').hidden,false);assert.match(el('nextPattern').textContent,/清亮主音/);key('Escape');el('home').onclick();
 });
+test('paper art remains song-scoped through settings and switching back to neon',async()=>{
+ await el('song-bossa').onclick();assert.equal(el('game').dataset.art,'ink');el('settings').onclick();assert.equal(el('offsetDialog').open,true);el('closeOffset').onclick();assert.equal(el('game').dataset.art,'ink');
+ await el('song-synthwave').onclick();assert.equal(el('game').dataset.art,'neon');await el('song-echo').onclick();assert.equal(el('game').dataset.art,'neon');
+});

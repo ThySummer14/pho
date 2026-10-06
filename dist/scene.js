@@ -1,3 +1,4 @@
+import {inkBackdrop,inkEffects} from './ink.js';
 // Architecture lives behind the chart; impact effects never move its geometry.
 export const themes = [
  {name:'接上电',place:'零号街区',color:[61,226,245],sky:[7,18,27],depth:.73,height:.91},
@@ -22,10 +23,10 @@ const polygon=(g,points)=>{
 const line=(g,x1,y1,x2,y2)=>{g.beginPath();g.moveTo(x1,y1);g.lineTo(x2,y2);g.stroke();};
 
 export class Scene {
- constructor(){this.effects=[];this.reduced=false;this.colors=null;}
+ constructor(){this.effects=[];this.reduced=false;this.colors=null;this.art='neon';}
  clear(){this.effects=[];}
  hit(result,position,now,combo=0){
-  this.effects.push({kind:result.kind,position,time:now,combo});
+  this.effects.push({id:result.id??0,kind:result.kind,position,time:now,combo});
   this.effects=this.effects.slice(-24);
  }
  palette(beat){
@@ -33,6 +34,7 @@ export class Scene {
   return {color:mix(this.colors?.[previous]||a.color,this.colors?.[section]||b.color,blend),sky:mix(a.sky,b.sky,blend)};
  }
  backdrop(g,w,h,beat,now,home=false,pulseBeat=beat){
+  if(this.art==='ink')return inkBackdrop(g,w,h,beat,now,{reduced:this.reduced,home,energy:this.energy});
   if(this.flavor&&this.flavor!=='echo')return this.genreBackdrop(g,w,h,beat,now,home,pulseBeat);
   const {color,sky}=this.palette(beat),{section,previous,blend}=sectionAt(beat);
   const a=themes[previous],b=themes[section],depth=a.depth+(b.depth-a.depth)*blend;
@@ -253,6 +255,7 @@ export class Scene {
  }
  renderEffects(g,xy,now){
   this.effects=this.effects.filter(e=>now-e.time<effectLife(e.kind));
+  if(this.art==='ink'){inkEffects(g,this.effects,xy,now,this.reduced);return;}
   for(const e of this.effects){
    const ms=now-e.time;if(ms<0)continue;
    const [x,y]=xy({position:e.position}),success=successKinds.has(e.kind);
