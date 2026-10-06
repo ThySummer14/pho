@@ -1,3 +1,4 @@
+import {createPadInput} from './touch-input.js';
 import {upcomingCue} from './anticipation.js';
 import {SONGS,songKey,sectionSize} from './songs.js';
 import {Judge,pointAt,calibration,PROFILES} from './engine.js';
@@ -43,7 +44,7 @@ function showAudioLoading(message){
 }
 function stop(){if(music){music.stop();music=null;}}
 function error(e){$('error').hidden=false;$('error').textContent='音乐未能加载或启动，请再点一次开始。'+e.message;}
-function clearFeedback(){scene.clear();eventCursor=judge?.events.length||0;lastFeedback=milestoneAt=padAt=-Infinity;$('milestone').textContent='';$('timing').hidden=true;$('hitPad').dataset.pressed='false';$('feedback').dataset.kind='';}
+function clearFeedback(){padInput.reset();scene.clear();eventCursor=judge?.events.length||0;lastFeedback=milestoneAt=padAt=-Infinity;$('milestone').textContent='';$('timing').hidden=true;$('hitPad').dataset.pressed='false';$('feedback').dataset.kind='';}
 function setSection(sec){$('sceneLabel').textContent=song.id==='echo'?themes[sec].place:`${song.title} / ${sections[sec]}`;for(let i=0;i<4;i++)$('chapter'+i).className=i===sec?'current':'';}
 function refreshHome(){
  for(const id of Object.keys(PROFILES)){const button=$('mode-'+id);if(button){button.className=id===mode?'selected':'';button.setAttribute?.('aria-pressed',String(id===mode));}}
@@ -164,8 +165,8 @@ window.addEventListener('keydown',e=>{
  if(e.code==='KeyR'&&['playing','paused','result'].includes(state)&&!e.repeat){e.preventDefault();retry();return;}
  if(!['Space','KeyF','KeyJ'].includes(e.code)||!['playing','calibrating'].includes(state))return;e.preventDefault();if(!e.repeat)press(e.timeStamp);
 });
-$('hitPad').onpointerdown=e=>{if(e.isPrimary===false||e.button>0)return;e.preventDefault();press(e.timeStamp);};
-$('hitPad').onclick=e=>{if(e.detail===0)press(e.timeStamp);};
+const padInput=createPadInput(press);
+$('hitPad').onpointerdown=padInput.down;$('hitPad').onpointerup=padInput.up;$('hitPad').onpointercancel=padInput.cancel;$('hitPad').onlostpointercapture=padInput.lostCapture;$('hitPad').onpointerleave=padInput.leave;$('hitPad').onclick=padInput.click;
 $('pause').onclick=()=>pause();window.addEventListener('blur',()=>pause('离开了窗口，已暂停'));document.addEventListener('visibilitychange',()=>{if(document.hidden)pause('切换了页面，已暂停');});
 setInterval(()=>{if(state==='playing'&&ctx?.state==='running')music?.pump();if(ctx&&ctx.state!=='running'&&['playing','calibrating'].includes(state))pause('声音中断，已暂停');},100);
 $('settings').onclick=()=>{if(['playing','calibrating','loading'].includes(state))pause();$('offsetDialog').showModal();};
@@ -179,7 +180,7 @@ $('musicVolume').oninput=e=>{prefs.music=Number(e.target.value)/100;syncPrefs();
 $('previewSound').onclick=async()=>{try{ctx??=new(window.AudioContext||window.webkitAudioContext)({latencyHint:'interactive'});await ctx.resume();const preview=new Music(ctx,prefs);preview.tap();setTimeout(()=>preview.stop(),180);}catch(e){error(e);}};
 $('timbre').onchange=e=>{prefs.timbre=e.target.value;syncPrefs();savePrefs();};$('visualOffset').oninput=e=>{prefs.visualOffset=Number(e.target.value);syncPrefs();savePrefs();};
 navigator.mediaDevices?.addEventListener?.('devicechange',()=>{$('hint').textContent='声音设备可能已改变，建议重新校准。';});
-function resize(){const d=Math.min(devicePixelRatio||1,2);canvas.width=canvas.clientWidth*d;canvas.height=canvas.clientHeight*d;g.setTransform(d,0,0,d,0,0);}window.addEventListener('resize',resize);resize();
+function resize(){const d=Math.min(devicePixelRatio||1,2);canvas.width=canvas.clientWidth*d;canvas.height=canvas.clientHeight*d;g.setTransform(d,0,0,d,0,0);}window.addEventListener('resize',resize);window.visualViewport?.addEventListener?.('resize',resize);if(typeof ResizeObserver==='function')new ResizeObserver(resize).observe(canvas);resize();
 function draw(){
  requestAnimationFrame(draw);const w=canvas.clientWidth,h=canvas.clientHeight,now=performance.now();
  const beat=state==='playing'?songBeat(songNow()):state==='paused'?pausedBeat:state==='result'?endBeat-5:8;
