@@ -18,3 +18,7 @@ test('pigment feedback is local, bounded, temporary, and keeps the input geometr
  const a=canvas(),b=canvas();inkEffects(a.g,[{id:1,kind:'good',position:pos,time:1000}],n=>n.position,1100,true);inkEffects(b.g,[{id:1,kind:'good',position:pos,time:1000}],n=>n.position,1300,true);
  const geometry=x=>x.calls.filter(c=>['moveTo','lineTo','arc'].includes(c[0]));assert.deepEqual(geometry(a),geometry(b));scene.renderEffects(g,n=>n.position,2000);assert.equal(scene.effects.length,0);
 });
+test('the decorative seal is absent during play so it cannot sit behind HUD numbers',()=>{
+ const home=canvas(),play=canvas();inkBackdrop(home.g,500,757,0,0,{home:true});inkBackdrop(play.g,500,757,0,0,{home:false});
+ const seal=c=>c.calls.some(x=>x[0]==='fillRect'&&x[3]===13&&x[4]===22);assert.equal(seal(home),true);assert.equal(seal(play),false);
+});

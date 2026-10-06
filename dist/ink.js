@@ -39,8 +39,8 @@ export function inkBackdrop(g,w,h,beat,now,{reduced=false,home=false,energy=.6}=
  // only mildly with musical form, never with individual hits or screen flashes.
  g.strokeStyle=rgba('61,88,69',.08+Math.max(0,Math.min(1,energy))*.025);g.lineWidth=1;
  for(let i=0;i<7;i++){const yy=h*(.79+i*.021);stroke(g,[w*(.48+noise(i+8)*.13),yy],[w*(.81+noise(i+71)*.1),yy]);}
- // Tiny vermilion seal: song identity, well away from the judgement area.
- g.fillStyle='rgba(139,53,38,.65)';g.fillRect(w*.88,h*.23,13,22);g.fillStyle=INK.paper;g.fillRect(w*.88+3,h*.23+4,2,12);g.fillRect(w*.88+7,h*.23+7,3,2);
+ // Vermilion seal belongs only to song selection, never behind the live HUD.
+ if(home){g.fillStyle='rgba(139,53,38,.65)';g.fillRect(w*.88,h*.23,13,22);g.fillStyle=INK.paper;g.fillRect(w*.88+3,h*.23+4,2,12);g.fillRect(w*.88+7,h*.23+7,3,2);}
  if(!home){const clear=g.createLinearGradient(0,h*.27,0,h*.69);clear.addColorStop(0,'rgba(243,238,226,0)');clear.addColorStop(.45,'rgba(243,238,226,.86)');clear.addColorStop(1,'rgba(243,238,226,0)');g.fillStyle=clear;g.fillRect(0,h*.27,w,h*.42);}
  g.restore();return INK.accent;
 }
