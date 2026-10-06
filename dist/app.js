@@ -1,3 +1,4 @@
+import {resizeCanvas} from './canvas-size.js';
 import {INK} from './ink.js?v=20261006-ink2';
 import {createPadInput} from './touch-input.js';
 import {upcomingCue} from './anticipation.js';
@@ -181,7 +182,7 @@ $('musicVolume').oninput=e=>{prefs.music=Number(e.target.value)/100;syncPrefs();
 $('previewSound').onclick=async()=>{try{ctx??=new(window.AudioContext||window.webkitAudioContext)({latencyHint:'interactive'});await ctx.resume();const preview=new Music(ctx,prefs);preview.tap();setTimeout(()=>preview.stop(),180);}catch(e){error(e);}};
 $('timbre').onchange=e=>{prefs.timbre=e.target.value;syncPrefs();savePrefs();};$('visualOffset').oninput=e=>{prefs.visualOffset=Number(e.target.value);syncPrefs();savePrefs();};
 navigator.mediaDevices?.addEventListener?.('devicechange',()=>{$('hint').textContent='声音设备可能已改变，建议重新校准。';});
-function resize(){const d=Math.min(devicePixelRatio||1,2);canvas.width=canvas.clientWidth*d;canvas.height=canvas.clientHeight*d;g.setTransform(d,0,0,d,0,0);}window.addEventListener('resize',resize);window.visualViewport?.addEventListener?.('resize',resize);if(typeof ResizeObserver==='function')new ResizeObserver(resize).observe(canvas);resize();
+function resize(){resizeCanvas(canvas,g,devicePixelRatio||1);}window.addEventListener('resize',resize);window.visualViewport?.addEventListener?.('resize',resize);if(typeof ResizeObserver==='function')new ResizeObserver(resize).observe(canvas);resize();
 function draw(){
  requestAnimationFrame(draw);const w=canvas.clientWidth,h=canvas.clientHeight,now=performance.now();
  const beat=state==='playing'?songBeat(songNow()):state==='paused'?pausedBeat:state==='result'?endBeat-5:8;
