@@ -1,10 +1,10 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';
-const elements=new Map(),listeners={},docListeners={};let frame,interval,audio,resolveResume,delayResume=false,delayDecode=false,resolveDecode; 
+const elements=new Map(),listeners={},docListeners={};let frame,interval,audio,resolveResume,delayResume=false,delayDecode=false,resolveDecode,decodeDuration=200; 
 const drawing=new Proxy({createRadialGradient:()=>({addColorStop(){}}),createLinearGradient:()=>({addColorStop(){}})},{get:(o,k)=>o[k]||(()=>{})});
 function el(id){if(!elements.has(id))elements.set(id,{id,hidden:false,style:{},dataset:{},value:0,textContent:'',innerHTML:'home',clientWidth:1100,clientHeight:680,getContext:()=>drawing,blur(){},showModal(){this.open=true},close(){this.open=false}});return elements.get(id);}
 class Param{value=0;setValueAtTime(){}exponentialRampToValueAtTime(){}}let live=0;
 class Node{gain=new Param();frequency=new Param();stopped=false;connect(){}disconnect(){}start(){live++;}stop(t){if(t===undefined&&!this.stopped){live--;this.stopped=true;}}}
-class Audio{async decodeAudioData(){if(delayDecode)return new Promise(r=>{resolveDecode=()=>r({duration:200})});return {duration:200}}currentTime=10;sampleRate=100;state='suspended';destination={};constructor(){audio=this;}resume(){if(delayResume)return new Promise(r=>{resolveResume=()=>{this.state='running';r()}});this.state='running';return Promise.resolve();}getOutputTimestamp(){return {contextTime:this.currentTime,performanceTime:performance.now()}}createGain(){return new Node()}createBuffer(_,n){return{getChannelData:()=>new Float32Array(n)}}createOscillator(){return new Node()}createBufferSource(){return new Node()}createBiquadFilter(){return new Node()}}
+class Audio{async decodeAudioData(){if(delayDecode)return new Promise(r=>{resolveDecode=()=>r({duration:200})});return {duration:decodeDuration}}currentTime=10;sampleRate=100;state='suspended';destination={};constructor(){audio=this;}resume(){if(delayResume)return new Promise(r=>{resolveResume=()=>{this.state='running';r()}});this.state='running';return Promise.resolve();}getOutputTimestamp(){return {contextTime:this.currentTime,performanceTime:performance.now()}}createGain(){return new Node()}createBuffer(_,n){return{getChannelData:()=>new Float32Array(n)}}createOscillator(){return new Node()}createBufferSource(){return new Node()}createBiquadFilter(){return new Node()}}
 globalThis.document={getElementById:el,addEventListener:(k,f)=>docListeners[k]=f,activeElement:{blur(){}},hidden:false};globalThis.window={AudioContext:Audio,addEventListener:(k,f)=>listeners[k]=f};globalThis.devicePixelRatio=1;globalThis.localStorage={getItem:()=>0,setItem(){}};globalThis.fetch=async url=>({ok:true,json:async()=>JSON.parse(fs.readFileSync(new URL('../dist/'+String(url).replace(/^\.\//,''),import.meta.url))),arrayBuffer:async()=>new ArrayBuffer(1)});globalThis.requestAnimationFrame=f=>frame=f;globalThis.setInterval=f=>interval=f;
 await import('../dist/app.js');
 function key(code,repeat=false){let prevented=false;listeners.keydown({code,repeat,timeStamp:performance.now(),preventDefault(){prevented=true}});return prevented;}
@@ -71,9 +71,26 @@ test('phrase result focuses four bars and repeated retry keeps its range',async(
  await el('phrase3').onclick();tick(audio.currentTime+2.2);assert.match(el('time').textContent,/8 秒/);key('KeyR');await Promise.resolve();tick(audio.currentTime+2.2);assert.match(el('time').textContent,/8 秒/);
  tick(audio.currentTime+10);assert.match(el('panel').innerHTML,/第 13–16 小节/);assert.match(el('panel').innerHTML,/不计入整曲最佳/);el('home').onclick();
 });
+test('newest song selection wins, and reselecting current song cancels pending selection',async()=>{
+ const normalFetch=globalThis.fetch;let resolveOld;
+ globalThis.fetch=url=>String(url).includes('bossa-chart')?new Promise(r=>{resolveOld=()=>normalFetch(url).then(r)}):normalFetch(url);
+ const pending=el('song-bossa').onclick();assert.equal(el('start').disabled,true);await el('song-synthwave').onclick();assert.equal(el('songTitle').textContent,'玻璃公路');resolveOld();await pending;assert.equal(el('songTitle').textContent,'玻璃公路');
+ let resolveBreak;globalThis.fetch=url=>String(url).includes('breakbeat-chart')?new Promise(r=>{resolveBreak=()=>normalFetch(url).then(r)}):normalFetch(url);
+ const second=el('song-breakbeat').onclick();await el('song-synthwave').onclick();resolveBreak();await second;assert.equal(el('songTitle').textContent,'玻璃公路');assert.equal(el('start').disabled,false);
+ globalThis.fetch=normalFetch;await el('song-echo').onclick();
+});
 test('leaving during master decode prevents a late playback resurrection',async()=>{
  await el('song-bossa').onclick();delayDecode=true;const pending=el('start').onclick();await Promise.resolve();await Promise.resolve();await Promise.resolve();
  assert.equal(typeof resolveDecode,'function');listeners.blur();resolveDecode();await pending;delayDecode=false;assert.equal(live,0);assert.equal(el('panel').hidden,false);await el('song-echo').onclick();
+});
+test('a cancelled decode cannot stop or replace a newer live song',async()=>{
+ await el('song-synthwave').onclick();delayDecode=true;const stale=el('start').onclick();await Promise.resolve();await Promise.resolve();await Promise.resolve();const resolveStale=resolveDecode;
+ listeners.blur();await el('song-echo').onclick();delayDecode=false;await el('start').onclick();const voices=live;resolveStale();await stale;assert.equal(live,voices);assert.equal(el('panel').hidden,true);assert.doesNotMatch(el('runMode').textContent,/REAPER/);key('Escape');el('home').onclick();
+});
+test('master fetch failure stays silent and retry can start the original master',async()=>{
+ await el('song-breakbeat').onclick();const normalFetch=globalThis.fetch;globalThis.fetch=async url=>String(url).endsWith('.mp3')?{ok:false}:normalFetch(url);
+ await el('start').onclick();assert.equal(live,0);assert.equal(el('error').hidden,false);assert.equal(el('panel').hidden,false);
+ globalThis.fetch=normalFetch;await el('start').onclick();assert.match(el('runMode').textContent,/REAPER 原版/);assert.equal(el('error').hidden,true);key('Escape');el('home').onclick();await el('song-echo').onclick();
 });
 test('song selection loads distinct charts, master at original BPM, slow arrangement and isolated replay',async()=>{
  for(const [id,bpm,total] of [['bossa',112,141],['synthwave',112,126],['breakbeat',172,101]]){
@@ -82,4 +99,9 @@ test('song selection loads distinct charts, master at original BPM, slow arrange
   key('Escape');el('home').onclick();el('practiceRate').value='.75';await el('sectionPractice1').onclick();assert.match(el('runMode').textContent,/练习合成版/);interval();tick(audio.currentTime+200);assert.match(el('panel').innerHTML,/不计入整曲最佳/);assert.match(el('panel').innerHTML,/练习合成版/);el('home').onclick();
  }
  await el('song-echo').onclick();assert.match(el('time').textContent,/117/);el('practiceRate').value='1';
+});
+
+test('truncated master is rejected before gameplay and can be retried safely',async()=>{
+ await el('song-bossa').onclick();decodeDuration=1;await el('start').onclick();assert.equal(live,0);assert.match(el('error').textContent,/音频长度与谱面不符/);assert.equal(el('panel').hidden,false);
+ decodeDuration=200;await el('start').onclick();assert.equal(el('panel').hidden,true);assert.match(el('runMode').textContent,/REAPER 原版/);key('Escape');el('home').onclick();await el('song-echo').onclick();
 });

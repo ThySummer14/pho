@@ -9,7 +9,7 @@ let chart=await fetch('./chart.json').then(r=>{if(!r.ok)throw Error('谱面加�
 let song=SONGS[0],sections=song.chapters;
 const chartCache=new Map([['echo',chart]]),audioCache=new Map();
 const tips=['跟着清亮主音，把光接上','长间隔，等一等再敲','靠近的两颗，轻轻嗒嗒','接成完整的一条光'];
-let state='home',ctx,music,judge,epoch=0,startBeat=0,endBeat=128,runStart=0,token=0,usedResume=false,offset=0,mode='standard',rate=1;
+let state='home',ctx,music,judge,epoch=0,startBeat=0,endBeat=128,runStart=0,token=0,usedResume=false,offset=0,mode='standard',rate=1,loadingPurpose=null;
 let lastFeedback=-Infinity,feedbackText='',pausedBeat=0,calValues=[],calTaken=new Set(),lastSection=-1,practice=false,eventCursor=0,milestoneAt=-Infinity,padAt=-Infinity;
 let progress;try{progress=readProgress(localStorage);}catch{progress={best:{},badges:[]};}
 const prefs={music:.75,sfx:.8,timbre:'crisp',visualOffset:0,reduced:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false};
@@ -38,7 +38,7 @@ function selectedRate(){const value=Number($('practiceRate').value);return [.75,
 function retry(){return launch(runStart,endBeat,false,rate);}
 function setView(view){$('game').dataset.view=view;if(view==='calibrating')$('playHelp').innerHTML='<span>先听四拍，再跟着短音自然敲击</span><small>SPACE / F / J · Esc 取消</small>';else if(view==='playing')$('playHelp').innerHTML='<span>空心节点与中心光点重合时敲击</span><small>SPACE / F / J · Esc 暂停 · R 重开</small>';}
 function stop(){if(music){music.stop();music=null;}}
-function error(e){$('error').hidden=false;$('error').textContent='声音未能启动，请再点一次开始。'+e.message;}
+function error(e){$('error').hidden=false;$('error').textContent='音乐未能加载或启动，请再点一次开始。'+e.message;}
 function clearFeedback(){scene.clear();eventCursor=judge?.events.length||0;lastFeedback=milestoneAt=padAt=-Infinity;$('milestone').textContent='';$('timing').hidden=true;$('hitPad').dataset.pressed='false';$('feedback').dataset.kind='';}
 function setSection(sec){$('sceneLabel').textContent=song.id==='echo'?themes[sec].place:`${song.title} / ${sections[sec]}`;for(let i=0;i<4;i++)$('chapter'+i).className=i===sec?'current':'';}
 function refreshHome(){
@@ -48,7 +48,7 @@ function refreshHome(){
 }
 function chooseMode(next){if(!PROFILES[next])return;mode=next;savePrefs();refreshHome();}
 async function launch(from=0,to=chart.durationBeats,resume=false,speed=1){
- if(state==='loading')return;const own=++token;state='loading';$('panel').hidden=true;$('error').hidden=true;stop();
+ if(state==='loading')return;const own=++token;state='loading';loadingPurpose='audio';$('count').textContent='加载音乐…';$('panel').hidden=true;$('error').hidden=true;stop();
  try{
   ctx??=new(window.AudioContext||window.webkitAudioContext)({latencyHint:'interactive'});await ctx.resume();if(own!==token)return;
   if(ctx.state!=='running')throw Error('浏览器仍暂停声音。');
@@ -56,7 +56,7 @@ async function launch(from=0,to=chart.durationBeats,resume=false,speed=1){
   let master=null;
   if(song.audio&&rate===1){
    master=audioCache.get(song.id);
-   if(!master){const response=await fetch('./'+song.audio);if(!response.ok)throw Error('原版音乐加载失败');master=await ctx.decodeAudioData(await response.arrayBuffer());if(own!==token)return;audioCache.set(song.id,master);}
+   if(!master){const response=await fetch('./'+song.audio);if(!response.ok)throw Error('原版音乐加载失败');master=await ctx.decodeAudioData(await response.arrayBuffer());if(own!==token)return;if(!Number.isFinite(master.duration)||master.duration<chart.durationBeats*60/chart.bpm-.05)throw Error('音频长度与谱面不符');audioCache.clear();audioCache.set(song.id,master);}
   }
   if(own!==token)return;
   music=new Music(ctx,prefs);startBeat=from;endBeat=to;
@@ -107,7 +107,7 @@ function showAchievements(){
  $('badgeList').innerHTML=BADGES.map(b=>`<div class="badge-row ${progress.badges.includes(b.id)?'unlocked':''}"><span class="badge-icon">${progress.badges.includes(b.id)?'◈':'◇'}</span><div><b>${b.title}</b><p>${b.detail}</p></div></div>`).join('');$('achievementDialog').showModal();
 }
 function bindHome(){
- $('start').onclick=()=>launch();$('practice').onclick=()=>launch(0,Math.min(32,chart.durationBeats));$('calibrate').onclick=startCalibration;
+ $('start').disabled=false;$('practice').disabled=false;$('start').onclick=()=>launch();$('practice').onclick=()=>launch(0,Math.min(32,chart.durationBeats));$('calibrate').onclick=startCalibration;
  for(const id of Object.keys(PROFILES))if($('mode-'+id))$('mode-'+id).onclick=()=>chooseMode(id);
  for(const entry of SONGS)$('song-'+entry.id).onclick=()=>selectSong(entry.id);
  if($('achievements'))$('achievements').onclick=showAchievements;if($('practiceAll'))$('practiceAll').onclick=()=>$('practiceDialog').showModal();refreshHome();refreshSong();
@@ -125,15 +125,15 @@ function refreshSong(){
  scene.colors=song.colors;scene.flavor=song.id;$('hint').textContent=song.hint;
 }
 async function selectSong(id){
- if(state!=='home')return;const next=SONGS.find(s=>s.id===id);if(!next||next===song)return;
- const own=++token;state='loading';$('songGuide').textContent='正在加载原创乐谱…';
+ if(state!=='home'&&!(state==='loading'&&loadingPurpose==='song'))return;const next=SONGS.find(s=>s.id===id);if(!next)return;if(next===song){if(state==='loading')showHome();return;}
+ const own=++token;state='loading';loadingPurpose='song';$('error').hidden=true;$('start').disabled=true;$('practice').disabled=true;$('songGuide').textContent=`正在加载《${next.title}》…`;
  try{
   const loaded=chartCache.get(id)||await fetch('./'+next.chart).then(r=>{if(!r.ok)throw Error('乐谱加载失败');return r.json()});
   if(own!==token)return;chartCache.set(id,loaded);chart=loaded;song=next;sections=song.chapters;
   try{progress=readProgress(localStorage,songKey(id),chart.notes.length);}catch{progress={best:{},badges:[]};}showHome();
  }catch(e){if(own===token){showHome();$('error').hidden=false;$('error').textContent='乐谱暂时无法加载，请重试。'+e.message;}}
 }
-function showHome(){token++;stop();state='home';setView('home');clearFeedback();$('panel').className='panel home-panel';$('panel').innerHTML=initialPanel;$('panel').hidden=false;$('hud').hidden=true;$('hitPad').hidden=true;$('pause').hidden=true;$('nextCue').hidden=true;$('playHelp').hidden=true;$('count').textContent='';$('section').textContent='一路接亮';$('time').textContent='64 秒 / 117 个节点';$('status').textContent='ORIGINAL SOUNDTRACK · 120 BPM';$('hint').textContent='空格，或点击打击区 · 跟随清亮主音';$('progress').style.width='0%';setSection(0);bindHome();}
+function showHome(){token++;stop();state='home';loadingPurpose=null;setView('home');clearFeedback();$('panel').className='panel home-panel';$('panel').innerHTML=initialPanel;$('panel').hidden=false;$('hud').hidden=true;$('hitPad').hidden=true;$('pause').hidden=true;$('nextCue').hidden=true;$('playHelp').hidden=true;$('count').textContent='';$('section').textContent='一路接亮';$('time').textContent='64 秒 / 117 个节点';$('status').textContent='ORIGINAL SOUNDTRACK · 120 BPM';$('hint').textContent='空格，或点击打击区 · 跟随清亮主音';$('progress').style.width='0%';setSection(0);bindHome();}
 async function startCalibration(){
  if(state==='loading')return;const own=++token;state='loading';stop();
  try{ctx??=new(window.AudioContext||window.webkitAudioContext)({latencyHint:'interactive'});await ctx.resume();if(own!==token)return;music=new Music(ctx,prefs);rate=1;epoch=ctx.currentTime+.2;calValues=[];calTaken=new Set();clearFeedback();for(let i=0;i<20;i++)music.click(epoch+i*.5,i%4===0);state='calibrating';setView('calibrating');$('panel').hidden=true;$('hud').hidden=true;$('hitPad').hidden=false;$('pause').hidden=false;$('nextCue').hidden=true;$('playHelp').hidden=false;$('section').textContent='先听四拍，再跟着按 16 次';$('time').textContent='20 拍 / 10 秒';$('hint').textContent='自然跟拍，不必追光点 · Esc 取消';document.activeElement?.blur();}catch(e){showHome();error(e);}
