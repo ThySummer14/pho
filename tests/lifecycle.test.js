@@ -12,7 +12,7 @@ const tick=t=>{audio.currentTime=t;frame();};
 test('start, repeated key suppression, pause rollback, focus loss, retry reset, no-input ending',async()=>{await el('start').onclick();assert.equal(el('panel').hidden,true);assert.ok(live>0);tick(12.15);assert.equal(key('Space'),true);frame();assert.equal(el('combo').textContent,1);key('Space',true);frame();assert.equal(el('combo').textContent,1);tick(13.15);key('Escape');assert.match(el('panel').innerHTML,/已暂停/);assert.equal(live,0);await el('resume').onclick();assert.ok(live>0);tick(15.3);frame();assert.equal(el('combo').textContent,0);listeners.blur();assert.match(el('panel').innerHTML,/离开了窗口/);assert.equal(live,0);await el('again').onclick();tick(17.45);frame();assert.equal(el('score').textContent,'000000');tick(83);assert.match(el('panel').innerHTML,/练习结束/);assert.match(el('panel').innerHTML,/117/);assert.equal(live,0);assert.equal(key('Space'),false);});
 test('late audio unlock and double start schedules a single song after promise resolves',async()=>{el('home').onclick();delayResume=true;let first=el('start').onclick();let second=el('start').onclick();assert.equal(live,0);audio.currentTime=90;resolveResume();await first;await second;assert.ok(live>0);tick(90);assert.equal(el('count').textContent,4);key('Escape');assert.equal(live,0);delayResume=false;});
 test('audio interruption and visibility change pause without background completion',async()=>{await el('again').onclick();audio.state='suspended';interval();assert.match(el('panel').innerHTML,/声音中断/);assert.equal(live,0);await el('resume').onclick();document.hidden=true;docListeners.visibilitychange();assert.match(el('panel').innerHTML,/切换了页面/);assert.equal(live,0);document.hidden=false;});
-test('calibration cancellation, manual +/- offset, reset and practice result',async()=>{el('home').onclick();el('offset').oninput({target:{value:60}});assert.equal(el('offsetLabel').textContent,'+60 ms');el('offset').oninput({target:{value:-55}});assert.equal(el('offsetLabel').textContent,'-55 ms');el('resetOffset').onclick();assert.equal(el('offsetLabel').textContent,'0 ms');await el('calibrate').onclick();key('Escape');assert.equal(live,0);await el('practice').onclick();tick(audio.currentTime+21);assert.match(el('panel').innerHTML,/32/);assert.match(el('panel').innerHTML,/练习结束/);assert.equal(el('section').textContent,'01 / 接上电');assert.equal(el('hud').hidden,true);});
+test('calibration cancellation, manual +/- offset, reset and practice result',async()=>{el('home').onclick();el('offset').oninput({target:{value:60}});assert.equal(el('offsetLabel').textContent,'+60 ms');el('offset').oninput({target:{value:-55}});assert.equal(el('offsetLabel').textContent,'-55 ms');el('resetOffset').onclick();assert.equal(el('offsetLabel').textContent,'0 ms');await el('calibrate').onclick();key('Escape');assert.equal(live,0);await el('practice').onclick();tick(audio.currentTime+21);assert.match(el('panel').innerHTML,/32/);assert.match(el('panel').innerHTML,/练习结束/);assert.equal(el('section').textContent,'分段练习 · 01 / 接上电');assert.equal(el('hud').hidden,true);});
 test('pointer input settles once, ignores secondary touches and settings shortcuts',async()=>{
  el('home').onclick();await el('practice').onclick();const start=audio.currentTime+2.15;tick(start);
  const tap={timeStamp:performance.now(),button:0,isPrimary:true,preventDefault(){}};
@@ -56,7 +56,7 @@ test('a legal challenge timestamp remains valid when a render frame processed fi
 });
 test('section practice starts in its own chapter and blocks shortcuts while choosing a segment',async()=>{
  el('practiceAll').onclick();assert.equal(el('practiceDialog').open,true);assert.equal(key('Enter'),false);
- await el('sectionPractice2').onclick();assert.equal(el('practiceDialog').open,false);tick(audio.currentTime+3);assert.equal(el('section').textContent,'03 / 回声');assert.match(el('runMode').textContent,/暖身/);key('Escape');el('home').onclick();
+ await el('sectionPractice2').onclick();assert.equal(el('practiceDialog').open,false);tick(audio.currentTime+3);assert.equal(el('section').textContent,'分段练习 · 03 / 回声');assert.match(el('runMode').textContent,/暖身/);key('Escape');el('home').onclick();
 });
 test('slow section practice aligns countdown, input, pause, retry and return to full speed',async()=>{
  el('practiceRate').value='.75';await el('sectionPractice2').onclick();const start=audio.currentTime+.15+4/1.5;
@@ -121,4 +121,22 @@ test('read-ahead stays hidden during count-in and returns after the first beat',
 test('paper art remains song-scoped through settings and switching back to neon',async()=>{
  await el('song-bossa').onclick();assert.equal(el('game').dataset.art,'ink');el('settings').onclick();assert.equal(el('offsetDialog').open,true);el('closeOffset').onclick();assert.equal(el('game').dataset.art,'ink');
  await el('song-synthwave').onclick();assert.equal(el('game').dataset.art,'neon');await el('song-echo').onclick();assert.equal(el('game').dataset.art,'neon');
+});
+test('restored practice status stays visible during play and clears on a fresh retry',async()=>{
+ await el('start').onclick();tick(audio.currentTime+2.2);key('Space');key('Escape');await el('resume').onclick();tick(audio.currentTime+.1);
+ assert.match(el('section').textContent,/中断恢复/);assert.match(el('status').textContent,/中断恢复/);
+ tick(audio.currentTime+5);assert.match(el('section').textContent,/中断恢复/);
+ key('Escape');await el('resume').onclick();tick(audio.currentTime+.1);assert.match(el('section').textContent,/中断恢复/);
+ key('KeyR');await Promise.resolve();tick(audio.currentTime+.1);assert.doesNotMatch(el('section').textContent,/中断恢复/);assert.doesNotMatch(el('status').textContent,/中断恢复/);
+ key('Escape');el('home').onclick();
+});
+
+test('speed practice and repeated interruptions keep distinct visible context, cleared by song switch',async()=>{
+ el('practiceRate').value='.75';await el('sectionPractice1').onclick();tick(audio.currentTime+.1);assert.match(el('section').textContent,/变速练习/);assert.match(el('runMode').textContent,/75%/);
+ key('Escape');await el('resume').onclick();tick(audio.currentTime+.1);assert.match(el('section').textContent,/中断恢复/);assert.match(el('runMode').textContent,/75%/);
+ tick(audio.currentTime+30);assert.match(el('panel').innerHTML,/中断恢复：本次分数、精准率、最长连击不计入整曲最佳/);assert.match(el('panel').innerHTML,/既有最佳与成就保留/);
+ el('home').onclick();await el('song-bossa').onclick();assert.doesNotMatch(el('status').textContent,/中断恢复/);await el('song-echo').onclick();el('practiceRate').value='1';
+});
+test('result UI reports failed local persistence instead of promising a saved result',async()=>{
+ const save=localStorage.setItem;localStorage.setItem=()=>{throw Error('storage full')};await el('practice').onclick();tick(audio.currentTime+21);assert.match(el('panel').innerHTML,/本地保存失败/);localStorage.setItem=save;el('home').onclick();
 });
