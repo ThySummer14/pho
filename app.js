@@ -7,7 +7,7 @@ import {Judge,pointAt,calibration,PROFILES} from './engine.js';
 import {phraseReport,timingSummary,coachingText} from './coaching.js';
 import {Music} from './music.js';
 import {Scene,themes} from './scene.js?v=20261006-ink2';
-import {BADGES,readProgress,recordRun} from './progress.js';
+import {BADGES,readProgress,recordRun,runContextLabel,recordExplanation} from './progress.js?v=20261006-status2';
 const $=id=>document.getElementById(id),canvas=$('track'),g=canvas.getContext('2d'),scene=new Scene();
 let chart=await fetch('./chart.json').then(r=>{if(!r.ok)throw Error('谱面加载失败');return r.json()});
 let song=SONGS[0],sections=song.chapters;
@@ -74,7 +74,7 @@ async function launch(from=0,to=chart.durationBeats,resume=false,speed=1){
   if(master)music.prepareMaster(master,epoch+beatSeconds(from),from,to,chart.bpm,to===chart.durationBeats);else if(chart.score)music.prepareScore(chart.score,epoch+beatSeconds(from),from,to,rate);else music.schedule(chart.notes,epoch+beatSeconds(from),from,to,rate);lastSection=-1;state='playing';setView('playing');
   $('hud').hidden=false;$('hitPad').hidden=false;$('pause').hidden=false;$('nextCue').hidden=false;$('playHelp').hidden=false;
   const band=judge.profile.perfect/judge.profile.window*50;$('perfectBand').style.left=`${50-band}%`;$('perfectBand').style.right=`${50-band}%`;
-  $('runMode').textContent=`${PROFILES[mode].label}判定${practice?` / 暖身 ${tempoLabel()}`:''}${song.audio?(master?' / REAPER 原版':' / 练习合成版'):''}`;$('status').textContent=practice?`SECTION PRACTICE · ${tempoLabel()}`:`${PROFILES[mode].label} · ${chart.bpm} BPM`;
+  $('runMode').textContent=`${PROFILES[mode].label}判定${practice?` / 暖身 ${tempoLabel()}`:''}${song.audio?(master?' / REAPER 原版':' / 练习合成版'):''}`;$('status').textContent=`${usedResume||practice?runContextLabel({practice,resumed:usedResume,rate})+' · ':''}${practice?`SECTION PRACTICE · ${tempoLabel()}`:`${PROFILES[mode].label} · ${chart.bpm} BPM`}`;
   $('hint').textContent=song.hint+(song.audio&&rate!==1?' · 变速使用练习合成版，原速播放 REAPER 原版':'');document.activeElement?.blur();
  }catch(e){if(own===token){stop();showHome();error(e);}}
 }
@@ -104,9 +104,10 @@ function finish(){
  const timing=timingSummary(judge.results),mean=timing.mean===null?null:Math.round(timing.mean);
  const phraseName=p=>`第 ${p.start/4+1}–${p.end/4} 小节`;
  const phraseMarkup=`<details class="coaching" open><summary>乐句回放 / 点一段集中练习</summary><p>${coachingText(timing,s)}</p><div class="phrase-grid">${report.phrases.map((p,i)=>`<button id="phrase${i}" class="phrase-button ${p===weak?'weakest':''}" aria-label="练习${phraseName(p)}，精准率 ${Math.round(p.accuracy*100)}%，漏拍 ${p.misses}，空拍 ${p.strays}"><b>${p.start/4+1}–${p.end/4}</b><span>${Math.round(p.accuracy*100)}%</span><i style="width:${Math.round(p.accuracy*100)}%"></i><small>漏 ${p.misses} · 空 ${p.strays}</small></button>`).join('')}</div><small>数字为小节编号 · 描边为推荐练习句${timing.count>=8?` · 误差标准差 ${Math.round(timing.spread)} ms（${timing.count} 次命中）`:''}</small></details>`;
- const outcome=recordRun(progress,s,{mode,practice,resumed:usedResume,expectedTotal:chart.notes.length});progress=outcome.progress;try{localStorage.setItem(songKey(song.id),JSON.stringify(progress));}catch{}
+ const outcome=recordRun(progress,s,{mode,practice,resumed:usedResume,expectedTotal:chart.notes.length});progress=outcome.progress;let saved=true;try{localStorage.setItem(songKey(song.id),JSON.stringify(progress));}catch{saved=false;}
+ const recordNote=recordExplanation({practice,resumed:usedResume,rate,recorded:outcome.recorded,fresh:outcome.fresh,saved});
  const title=s.hits===0?'练习结束':s.fullCombo?'FULL COMBO':'演奏完成';
- showPanel(`<p class="edition">${PROFILES[mode].label} / ${practice?`SECTION PRACTICE · ${tempoLabel()}`:song.title}${song.audio&&rate!==1?' / 练习合成版':''}${usedResume?' / 练习恢复':''}</p><h2>${title}</h2><div class="result-rank ${s.fullCombo?'full':''}">${outcome.rank}</div><div class="result-sub">${s.hits} / ${s.total} 接亮 · 精准率 ${(s.accuracy*100).toFixed(1)}%</div><div class="result-score">${s.score.toLocaleString()}</div>${outcome.newBest?`<p class="new-record">NEW BEST / 新纪录${outcome.improvement&&outcome.improvement!==s.score?` +${outcome.improvement.toLocaleString()}`:''}</p>`:''}<div class="results"><div><b>${s.perfect}</b><span>精准</span></div><div><b>${s.good}</b><span>命中</span></div><div><b>${s.caught}</b><span>接住</span></div><div><b class="result-miss">${s.miss}</b><span>漏拍</span></div><div><b>${s.maxCombo}</b><span>最长连击</span></div></div><p class="result-detail">空击 ${s.strays}${mean===null?'':` · 命中平均${mean<0?'提前':'延后'} ${Math.abs(mean)} ms`}${practice||usedResume?'<br>练习记录，不计入整曲最佳':''}</p>${outcome.fresh.length?`<p class="result-badges">解锁成就 / ${outcome.fresh.map(b=>b.title).join(' · ')}</p>`:''}${phraseMarkup}<div class="actions"><button class="primary" id="again">再来一次 ↗</button><button id="weak">练${phraseName(weak)} · ${Math.round(beatSeconds(weak.end-weak.start))} 秒</button></div><button id="home" class="textbutton">返回选曲</button>`);
+ showPanel(`<p class="edition">${PROFILES[mode].label} / ${practice?`SECTION PRACTICE · ${tempoLabel()}`:song.title}${song.audio&&rate!==1?' / 练习合成版':''}${usedResume?' / 练习恢复':''}</p><h2>${title}</h2><div class="result-rank ${s.fullCombo?'full':''}">${outcome.rank}</div><div class="result-sub">${s.hits} / ${s.total} 接亮 · 精准率 ${(s.accuracy*100).toFixed(1)}%</div><div class="result-score">${s.score.toLocaleString()}</div>${outcome.newBest?`<p class="new-record">NEW BEST / 新纪录${outcome.improvement&&outcome.improvement!==s.score?` +${outcome.improvement.toLocaleString()}`:''}</p>`:''}<div class="results"><div><b>${s.perfect}</b><span>精准</span></div><div><b>${s.good}</b><span>命中</span></div><div><b>${s.caught}</b><span>接住</span></div><div><b class="result-miss">${s.miss}</b><span>漏拍</span></div><div><b>${s.maxCombo}</b><span>最长连击</span></div></div><p class="result-detail">空击 ${s.strays}${mean===null?'':` · 命中平均${mean<0?'提前':'延后'} ${Math.abs(mean)} ms`}<br>${recordNote}</p>${outcome.fresh.length?`<p class="result-badges">解锁成就 / ${outcome.fresh.map(b=>b.title).join(' · ')}</p>`:''}${phraseMarkup}<div class="actions"><button class="primary" id="again">再来一次 ↗</button><button id="weak">练${phraseName(weak)} · ${Math.round(beatSeconds(weak.end-weak.start))} 秒</button></div><button id="home" class="textbutton">返回选曲</button>`);
  $('again').onclick=retry;$('weak').onclick=()=>launch(weak.start,weak.end,false,rate);for(const [i,p] of report.phrases.entries())$('phrase'+i).onclick=()=>launch(p.start,p.end,false,rate);$('home').onclick=showHome;$('hint').textContent=s.hits?'这一遍的回声，已留下。':'先试 16 秒暖身，跟着主音敲几下。';
 }
 const initialPanel=$('panel').innerHTML;
@@ -194,7 +195,7 @@ function draw(){
   const sec=Math.min(3,Math.max(0,Math.floor(Math.max(runStart,Math.min(beat,endBeat-.001))/sectionSize(song))));
   const fresh=now-lastFeedback<600;$('feedback').textContent=fresh?feedbackText:(song.id==='echo'?tips[sec]:song.hint);if(!fresh){$('feedback').dataset.kind='';$('timing').hidden=true;}
   $('count').textContent=t<beatSeconds(startBeat)?Math.min(4,Math.max(1,Math.ceil((beatSeconds(startBeat)-t)/beatSeconds(1)))):'';
-  if(sec!==lastSection){$('section').textContent=`0${sec+1} / ${sections[sec]}`;setSection(sec);lastSection=sec;}
+  if(sec!==lastSection){$('section').textContent=`${usedResume||practice?runContextLabel({practice,resumed:usedResume,rate})+' · ':''}0${sec+1} / ${sections[sec]}`;setSection(sec);lastSection=sec;}
   $('nextCue').hidden=t<beatSeconds(startBeat)-1e-8;
   $('nextPattern').textContent=upcomingCue(judge.notes,judge.results,beat,judge.profile.window*chart.bpm*rate/60).text;
   $('time').textContent=`${Math.max(0,Math.min(Math.round(beatSeconds(endBeat-runStart)),Math.floor(t-beatSeconds(runStart))))} / ${Math.round(beatSeconds(endBeat-runStart))} 秒`;

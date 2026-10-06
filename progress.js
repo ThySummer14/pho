@@ -22,3 +22,14 @@ export function recordRun(progress,stats,{mode='standard',practice=false,resumed
  if(full&&stats.hits>0){next.best[mode]={score:Math.max(previous?.score||0,stats.score),accuracy:Math.max(previous?.accuracy||0,stats.accuracy),combo:Math.max(previous?.combo||0,stats.maxCombo),rank:rank({hits:stats.hits,accuracy:Math.max(previous?.accuracy||0,stats.accuracy)}),fullCombo:!!(previous?.fullCombo||stats.fullCombo)};}
  return {progress:next,fresh,newBest,improvement:newBest?stats.score-(previous?.score||0):0,rank:rank(stats),recorded:full&&stats.hits>0};
 }
+// Descriptive only: these labels never change scoring or record eligibility.
+export function runContextLabel({practice=false,resumed=false,rate=1}={}){
+ return resumed?'中断恢复':rate!==1?'变速练习':practice?'分段练习':'完整演奏';
+}
+export function recordExplanation({practice=false,resumed=false,rate=1,recorded=false,fresh=[],saved=true}={}){
+ const unranked=practice||resumed;
+ let text=unranked?`${resumed?'中断恢复':rate!==1?'变速练习':'分段练习'}：本次分数、精准率、最长连击不计入整曲最佳。`:recorded?(saved?'整曲最佳已按当前曲目和判定难度保存。':'本次整曲结果暂留在当前页面。'):'本次没有命中，不更新整曲最佳。';
+ if(!saved)return text+' 本地保存失败，请勿依赖本次新增纪录或成就。';
+ if(unranked)text+=fresh.length?'新解锁的成就已保存。':'既有最佳与成就保留。';
+ return text;
+}
