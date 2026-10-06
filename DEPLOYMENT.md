@@ -2,12 +2,13 @@
 
 本分支由已测试的 main/dist 生成，入口 index.html 位于根目录。
 
-- 来源 main：3efa60f79edf29170ac826ef5b41b43c699ab2eb
-- 来源 dist Git tree：e2ef2bd93e5f0e58c4482695ffaad06af4961c21
+- 来源 main：7c6aa1a7031bd66dde9dde9311c2dff6b294d973
+- 来源 dist Git tree：e03d267e3d20f4b6225c878d2f229889c9b1961c
 - 24 份运行文件与来源逐字节一致，包含手机布局与触点序列改进
 - 发布前：77 项串行测试、JavaScript 语法与相对路径检查通过
 - Pages 来源：gh-pages / (root)
-- 本次真实窄窗流程检查在部署完成后进行；不等同于实体 Android 测试
+- 首轮真实浏览器检查：360/390/430px 短竖屏与 844×362 横屏，选曲/设置/播放/暂停/继续/结果可操作；不等同于实体 Android 测试
+- 此快照补充紧凑布局的音乐版本标签显示
 
 ## 后续更新
 
