@@ -1,11 +1,11 @@
-import {INK} from './ink.js';
+import {INK} from './ink.js?v=20261006-ink2';
 import {createPadInput} from './touch-input.js';
 import {upcomingCue} from './anticipation.js';
 import {SONGS,songKey,sectionSize} from './songs.js?v=20261006-ink1';
 import {Judge,pointAt,calibration,PROFILES} from './engine.js';
 import {phraseReport,timingSummary,coachingText} from './coaching.js';
 import {Music} from './music.js';
-import {Scene,themes} from './scene.js?v=20261006-ink1';
+import {Scene,themes} from './scene.js?v=20261006-ink2';
 import {BADGES,readProgress,recordRun} from './progress.js';
 const $=id=>document.getElementById(id),canvas=$('track'),g=canvas.getContext('2d'),scene=new Scene();
 let chart=await fetch('./chart.json').then(r=>{if(!r.ok)throw Error('谱面加载失败');return r.json()});

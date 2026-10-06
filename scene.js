@@ -1,4 +1,4 @@
-import {inkBackdrop,inkEffects} from './ink.js';
+import {inkBackdrop,inkEffects} from './ink.js?v=20261006-ink2';
 // Architecture lives behind the chart; impact effects never move its geometry.
 export const themes = [
  {name:'接上电',place:'零号街区',color:[61,226,245],sky:[7,18,27],depth:.73,height:.91},
