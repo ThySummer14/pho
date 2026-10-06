@@ -74,7 +74,7 @@ async function launch(from=0,to=chart.durationBeats,resume=false,speed=1){
   if(master)music.prepareMaster(master,epoch+beatSeconds(from),from,to,chart.bpm,to===chart.durationBeats);else if(chart.score)music.prepareScore(chart.score,epoch+beatSeconds(from),from,to,rate);else music.schedule(chart.notes,epoch+beatSeconds(from),from,to,rate);lastSection=-1;state='playing';setView('playing');
   $('hud').hidden=false;$('hitPad').hidden=false;$('pause').hidden=false;$('nextCue').hidden=false;$('playHelp').hidden=false;
   const band=judge.profile.perfect/judge.profile.window*50;$('perfectBand').style.left=`${50-band}%`;$('perfectBand').style.right=`${50-band}%`;
-  $('runMode').textContent=`${PROFILES[mode].label}判定${practice?` / 暖身 ${tempoLabel()}`:''}${song.audio?(master?' / REAPER 原版':' / 练习合成版'):''}`;$('status').textContent=`${usedResume||practice?runContextLabel({practice,resumed:usedResume,rate})+' · ':''}${practice?`SECTION PRACTICE · ${tempoLabel()}`:`${PROFILES[mode].label} · ${chart.bpm} BPM`}`;
+  $('runMode').textContent=`${PROFILES[mode].label}判定${practice?` / ${usedResume?'恢复':rate!==1?'变速':'暖身'} ${tempoLabel()}`:usedResume?' / 中断恢复':''}${song.audio?(master?' / REAPER 原版':' / 练习合成版'):''}`;$('status').textContent=`${usedResume||practice?runContextLabel({practice,resumed:usedResume,rate})+' · ':''}${practice?`SECTION PRACTICE · ${tempoLabel()}`:`${PROFILES[mode].label} · ${chart.bpm} BPM`}`;
   $('hint').textContent=song.hint+(song.audio&&rate!==1?' · 变速使用练习合成版，原速播放 REAPER 原版':'');document.activeElement?.blur();
  }catch(e){if(own===token){stop();showHome();error(e);}}
 }

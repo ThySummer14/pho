@@ -124,7 +124,7 @@ test('paper art remains song-scoped through settings and switching back to neon'
 });
 test('restored practice status stays visible during play and clears on a fresh retry',async()=>{
  await el('start').onclick();tick(audio.currentTime+2.2);key('Space');key('Escape');await el('resume').onclick();tick(audio.currentTime+.1);
- assert.match(el('section').textContent,/中断恢复/);assert.match(el('status').textContent,/中断恢复/);
+ assert.match(el('section').textContent,/中断恢复/);assert.match(el('status').textContent,/中断恢复/);assert.match(el('runMode').textContent,/中断恢复/);
  tick(audio.currentTime+5);assert.match(el('section').textContent,/中断恢复/);
  key('Escape');await el('resume').onclick();tick(audio.currentTime+.1);assert.match(el('section').textContent,/中断恢复/);
  key('KeyR');await Promise.resolve();tick(audio.currentTime+.1);assert.doesNotMatch(el('section').textContent,/中断恢复/);assert.doesNotMatch(el('status').textContent,/中断恢复/);
@@ -132,8 +132,8 @@ test('restored practice status stays visible during play and clears on a fresh r
 });
 
 test('speed practice and repeated interruptions keep distinct visible context, cleared by song switch',async()=>{
- el('practiceRate').value='.75';await el('sectionPractice1').onclick();tick(audio.currentTime+.1);assert.match(el('section').textContent,/变速练习/);assert.match(el('runMode').textContent,/75%/);
- key('Escape');await el('resume').onclick();tick(audio.currentTime+.1);assert.match(el('section').textContent,/中断恢复/);assert.match(el('runMode').textContent,/75%/);
+ el('practiceRate').value='.75';await el('sectionPractice1').onclick();tick(audio.currentTime+.1);assert.match(el('section').textContent,/变速练习/);assert.match(el('runMode').textContent,/变速 75%/);
+ key('Escape');await el('resume').onclick();tick(audio.currentTime+.1);assert.match(el('section').textContent,/中断恢复/);assert.match(el('runMode').textContent,/恢复 75%/);
  tick(audio.currentTime+30);assert.match(el('panel').innerHTML,/中断恢复：本次分数、精准率、最长连击不计入整曲最佳/);assert.match(el('panel').innerHTML,/既有最佳与成就保留/);
  el('home').onclick();await el('song-bossa').onclick();assert.doesNotMatch(el('status').textContent,/中断恢复/);await el('song-echo').onclick();el('practiceRate').value='1';
 });
