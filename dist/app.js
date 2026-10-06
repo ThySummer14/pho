@@ -1,3 +1,4 @@
+import {upcomingCue} from './anticipation.js';
 import {SONGS,songKey,sectionSize} from './songs.js';
 import {Judge,pointAt,calibration,PROFILES} from './engine.js';
 import {phraseReport,timingSummary,coachingText} from './coaching.js';
@@ -36,7 +37,10 @@ const songBeat=t=>t*chart.bpm*rate/60;
 const tempoLabel=()=>`${Math.round(rate*100)}% · ${Math.round(chart.bpm*rate)} BPM`;
 function selectedRate(){const value=Number($('practiceRate').value);return [.75,.85,1,1.15].includes(value)?value:1;}
 function retry(){return launch(runStart,endBeat,false,rate);}
-function setView(view){$('game').dataset.view=view;if(view==='calibrating')$('playHelp').innerHTML='<span>先听四拍，再跟着短音自然敲击</span><small>SPACE / F / J · Esc 取消</small>';else if(view==='playing')$('playHelp').innerHTML='<span>空心节点与中心光点重合时敲击</span><small>SPACE / F / J · Esc 暂停 · R 重开</small>';}
+function setView(view){$('game').dataset.view=view;if(view==='loading')$('pause').textContent='取消加载';else if(view==='playing')$('pause').innerHTML='暂停 <kbd>Esc</kbd>';else if(view==='calibrating')$('pause').innerHTML='取消校准 <kbd>Esc</kbd>'; if(view==='calibrating')$('playHelp').innerHTML='<span>先听四拍，再跟着短音自然敲击</span><small>SPACE / F / J · Esc 取消</small>';else if(view==='playing')$('playHelp').innerHTML='<span>空心节点与中心光点重合时敲击</span><small>SPACE / F / J · Esc 暂停 · R 重开</small>';}
+function showAudioLoading(message){
+ setView('loading');clearFeedback();$('count').textContent=message;$('panel').hidden=true;$('hud').hidden=true;$('hitPad').hidden=true;$('nextCue').hidden=true;$('playHelp').hidden=true;$('pause').hidden=false;
+}
 function stop(){if(music){music.stop();music=null;}}
 function error(e){$('error').hidden=false;$('error').textContent='音乐未能加载或启动，请再点一次开始。'+e.message;}
 function clearFeedback(){scene.clear();eventCursor=judge?.events.length||0;lastFeedback=milestoneAt=padAt=-Infinity;$('milestone').textContent='';$('timing').hidden=true;$('hitPad').dataset.pressed='false';$('feedback').dataset.kind='';}
@@ -48,7 +52,7 @@ function refreshHome(){
 }
 function chooseMode(next){if(!PROFILES[next])return;mode=next;savePrefs();refreshHome();}
 async function launch(from=0,to=chart.durationBeats,resume=false,speed=1){
- if(state==='loading')return;const own=++token;state='loading';loadingPurpose='audio';$('count').textContent='加载音乐…';$('panel').hidden=true;$('error').hidden=true;stop();
+ if(state==='loading')return;const own=++token;state='loading';loadingPurpose='audio';$('error').hidden=true;stop();showAudioLoading('加载音乐…');
  try{
   ctx??=new(window.AudioContext||window.webkitAudioContext)({latencyHint:'interactive'});await ctx.resume();if(own!==token)return;
   if(ctx.state!=='running')throw Error('浏览器仍暂停声音。');
@@ -135,7 +139,7 @@ async function selectSong(id){
 }
 function showHome(){token++;stop();state='home';loadingPurpose=null;setView('home');clearFeedback();$('panel').className='panel home-panel';$('panel').innerHTML=initialPanel;$('panel').hidden=false;$('hud').hidden=true;$('hitPad').hidden=true;$('pause').hidden=true;$('nextCue').hidden=true;$('playHelp').hidden=true;$('count').textContent='';$('section').textContent='一路接亮';$('time').textContent='64 秒 / 117 个节点';$('status').textContent='ORIGINAL SOUNDTRACK · 120 BPM';$('hint').textContent='空格，或点击打击区 · 跟随清亮主音';$('progress').style.width='0%';setSection(0);bindHome();}
 async function startCalibration(){
- if(state==='loading')return;const own=++token;state='loading';stop();
+ if(state==='loading')return;const own=++token;state='loading';loadingPurpose='audio';stop();showAudioLoading('准备声音校准…');
  try{ctx??=new(window.AudioContext||window.webkitAudioContext)({latencyHint:'interactive'});await ctx.resume();if(own!==token)return;music=new Music(ctx,prefs);rate=1;epoch=ctx.currentTime+.2;calValues=[];calTaken=new Set();clearFeedback();for(let i=0;i<20;i++)music.click(epoch+i*.5,i%4===0);state='calibrating';setView('calibrating');$('panel').hidden=true;$('hud').hidden=true;$('hitPad').hidden=false;$('pause').hidden=false;$('nextCue').hidden=true;$('playHelp').hidden=false;$('section').textContent='先听四拍，再跟着按 16 次';$('time').textContent='20 拍 / 10 秒';$('hint').textContent='自然跟拍，不必追光点 · Esc 取消';document.activeElement?.blur();}catch(e){showHome();error(e);}
 }
 function finishCalibration(){
@@ -188,8 +192,8 @@ function draw(){
   const fresh=now-lastFeedback<600;$('feedback').textContent=fresh?feedbackText:(song.id==='echo'?tips[sec]:song.hint);if(!fresh){$('feedback').dataset.kind='';$('timing').hidden=true;}
   $('count').textContent=t<beatSeconds(startBeat)?Math.min(4,Math.max(1,Math.ceil((beatSeconds(startBeat)-t)/beatSeconds(1)))):'';
   if(sec!==lastSection){$('section').textContent=`0${sec+1} / ${sections[sec]}`;setSection(sec);lastSection=sec;}
-  const next=judge.notes.find(n=>!judge.results.has(n.id)&&n.beat>=beat-.3),after=next&&judge.notes.find(n=>n.beat>next.beat);
-  $('nextPattern').textContent=next?(after&&after.beat-next.beat<=.5?'双拍 · 嗒嗒':after&&after.beat-next.beat>=2?'留白 · 等一等':'单拍 · 嗒'):'曲尾 / LAST ECHO';
+  $('nextCue').hidden=t<beatSeconds(startBeat)-1e-8;
+  $('nextPattern').textContent=upcomingCue(judge.notes,judge.results,beat,judge.profile.window*chart.bpm*rate/60).text;
   $('time').textContent=`${Math.max(0,Math.min(Math.round(beatSeconds(endBeat-runStart)),Math.floor(t-beatSeconds(runStart))))} / ${Math.round(beatSeconds(endBeat-runStart))} 秒`;
   $('progress').style.width=`${Math.max(0,Math.min(100,(beat-runStart)/(endBeat-runStart)*100))}%`;
   if(t>beatSeconds(endBeat)+1.2){finish();return;}

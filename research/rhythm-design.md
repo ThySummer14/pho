@@ -70,3 +70,5 @@ osu! 官方将 **active hitsound** 描述为点击时的清晰冲击，用于感
 - [Rhythm Doctor 开发者介绍](https://store.steampowered.com/app/774181/Rhythm_Doctor/)：单键操作仍可逐关引入不同节奏概念。本项目把 Bossa 切分、Synthwave 主音呼吸、DnB 应答分别作为读谱重点；没有复制第七拍规则、故事、音乐或画面。
 
 技术选择参考 [AudioBufferSourceNode.start](https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode/start)：when 使用 AudioContext 时间，offset 选取录音中的开始位置。原速 master 走同一个音频时钟，变速练习单列；不在两个独立时钟之间猜测同步。
+
+2026-10-06 读谱提示小改进沿用 ADOFAI 官方“提前读节奏”的启发，但保持本项目固定焦点和单键路线：提示声部身份、半拍/切分/留白，避免玩家把伴奏每一下鼓误认为目标。计算只用于预告，完全不参与计分；没有新增商业游戏素材或复制规则。

@@ -105,3 +105,16 @@ test('truncated master is rejected before gameplay and can be retried safely',as
  await el('song-bossa').onclick();decodeDuration=1;await el('start').onclick();assert.equal(live,0);assert.match(el('error').textContent,/音频长度与谱面不符/);assert.equal(el('panel').hidden,false);
  decodeDuration=200;await el('start').onclick();assert.equal(el('panel').hidden,true);assert.match(el('runMode').textContent,/REAPER 原版/);key('Escape');el('home').onclick();await el('song-echo').onclick();
 });
+
+test('touch-visible loading cancel prevents late audio start and restores the home controls',async()=>{
+ delayResume=true;const pending=el('start').onclick();assert.equal(el('game').dataset.view,'loading');assert.equal(el('pause').hidden,false);assert.equal(el('pause').textContent,'取消加载');assert.equal(el('hitPad').hidden,true);assert.equal(el('hud').hidden,true);
+ el('pause').onclick();assert.equal(el('game').dataset.view,'home');assert.equal(el('pause').hidden,true);resolveResume();await pending;delayResume=false;assert.equal(live,0);assert.equal(el('panel').hidden,false);
+ await el('start').onclick();assert.match(el('pause').innerHTML,/暂停/);key('Escape');el('home').onclick();
+});
+test('calibration audio unlock has the same touch cancellation escape route',async()=>{
+ delayResume=true;const pending=el('calibrate').onclick();assert.equal(el('pause').hidden,false);assert.equal(el('game').dataset.view,'loading');assert.match(el('count').textContent,/校准/);
+ el('pause').onclick();resolveResume();await pending;delayResume=false;assert.equal(live,0);assert.equal(el('game').dataset.view,'home');
+});
+test('read-ahead stays hidden during count-in and returns after the first beat',async()=>{
+ await el('start').onclick();tick(audio.currentTime);assert.equal(el('nextCue').hidden,true);tick(audio.currentTime+2.16);assert.equal(el('nextCue').hidden,false);assert.match(el('nextPattern').textContent,/清亮主音/);key('Escape');el('home').onclick();
+});
