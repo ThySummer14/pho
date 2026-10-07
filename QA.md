@@ -179,3 +179,9 @@ Pages run 37411371930 成功后，使用普通 Chromium 窗口缩放/调整尺�
 ### 练习状态线上检查与横屏补充
 
 部署37430610467的新字节（status2）中，普通浏览器验证分段启动→暂停→恢复的四拍倒数与持续状态、结果页不更新整曲最佳说明，以及再来一次清除恢复状态，均通过。横屏原布局隐藏章节条/顶栏，因此在始终保留的判定/速度行用等长“恢复/变速”替换“暖身”标签；完整曲恢复则显示“中断恢复”。不增加新HUD区域或改变计分。相关生命周期测试覆盖这些词与速度并存。
+
+## 2026-10-07 input-clock resilience
+
+Extracted and tested the audible-clock mapping used by both drawing and input. Missing, zero, stale, malformed or throwing getOutputTimestamp implementations retain the existing calibrated currentTime fallback instead of terminating the frame loop. Delayed input keeps the original event timestamp; legacy epoch timestamps are normalized. No latency estimate is guessed and saved offsets are unchanged. Reference: https://www.w3.org/TR/webaudio/#dom-audiocontext-getoutputtimestamp
+
+Focused settings/pause controls now retain native keyboard activation rather than consuming Space as an accidental note. The hit pad remains a rhythm input. All 97 tests pass, including output-clock faults, timestamp mapping and real app lifecycle. Physical phone/audio latency remains unmeasured.

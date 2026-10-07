@@ -140,3 +140,12 @@ test('speed practice and repeated interruptions keep distinct visible context, c
 test('result UI reports failed local persistence instead of promising a saved result',async()=>{
  const save=localStorage.setItem;localStorage.setItem=()=>{throw Error('storage full')};await el('practice').onclick();tick(audio.currentTime+21);assert.match(el('panel').innerHTML,/本地保存失败/);localStorage.setItem=save;el('home').onclick();
 });
+
+test('focused settings and pause buttons keep native keyboard activation without stray notes',async()=>{
+ el('home').onclick();await el('start').onclick();tick(audio.currentTime+2.15);
+ for(const id of ['settings','pause']){
+  let prevented=false;listeners.keydown({code:'Space',repeat:false,timeStamp:performance.now(),target:{id,closest:()=>true},preventDefault(){prevented=true}});
+  assert.equal(prevented,false);frame();assert.equal(el('score').textContent,'000000');
+ }
+ key('Space');frame();assert.equal(el('combo').textContent,1);key('Escape');
+});

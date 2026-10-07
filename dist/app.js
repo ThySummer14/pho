@@ -1,3 +1,4 @@
+import {audioTime,inputTime} from './audio-clock.js';
 import {resizeCanvas} from './canvas-size.js';
 import {INK} from './ink.js?v=20261006-ink2';
 import {createPadInput} from './touch-input.js';
@@ -33,7 +34,7 @@ function syncPrefs(){
 }
 function setOffset(v){offset=Math.round(v/5)*5;$('offset').value=offset;$('offsetLabel').textContent=$('offsetValue').textContent=signed(offset);try{localStorage.setItem('echo-offset',offset);}catch{}}
 setOffset(offset);syncPrefs();
-function audioNow(perf=performance.now()){if(!ctx)return 0;const now=performance.now(),ts=ctx.getOutputTimestamp?.();if(ts&&ts.contextTime>0&&Math.abs(now-ts.performanceTime)<1000)return ts.contextTime+(perf-ts.performanceTime)/1000;return ctx.currentTime+(perf-now)/1000;}
+function audioNow(perf=performance.now()){const now=performance.now();return audioTime(ctx,perf,now);}
 function songNow(perf){return audioNow(perf)-epoch;}
 const beatSeconds=beat=>beat*60/(chart.bpm*rate);
 const songBeat=t=>t*chart.bpm*rate/60;
@@ -154,7 +155,7 @@ function finishCalibration(){
 const modalOpen=()=>$('offsetDialog').open||$('achievementDialog').open||$('practiceDialog').open;
 function press(timeStamp){
  if(modalOpen()||!['playing','calibrating'].includes(state))return;
- const perf=timeStamp>1e12?timeStamp-performance.timeOrigin:timeStamp,t=songNow(perf);
+ const perf=inputTime(timeStamp,performance.now(),performance.timeOrigin),t=songNow(perf);
  if(state==='calibrating'){padAt=performance.now();music?.tap();const i=Math.round(t/.5);if(i>=4&&i<20&&!calTaken.has(i)&&Math.abs(t-i*.5)<=.25){calTaken.add(i);calValues.push(t-i*.5);$('count').textContent=`${calTaken.size} / 16`;}return;}
  if(t<beatSeconds(startBeat)-judge.profile.window+offset/1000||t>beatSeconds(endBeat)+judge.profile.window+offset/1000)return;
  padAt=performance.now();music?.tap();
@@ -163,6 +164,9 @@ function press(timeStamp){
 }
 window.addEventListener('keydown',e=>{
  if(modalOpen())return;
+ // Preserve native keyboard activation/editing of focused controls. The hit pad
+ // remains a rhythm input; other controls must never create an accidental note.
+ if(e.target?.closest?.('button,a,input,select,textarea,[contenteditable="true"]')&&e.target?.id!=='hitPad'&&e.code!=='Escape')return;
  if(e.code==='Enter'&&state==='home'&&!e.repeat){if(e.target?.closest?.('button,a,input,select'))return;e.preventDefault();launch();return;}
  if(e.code==='Escape'&&['playing','calibrating','loading'].includes(state)){e.preventDefault();pause();return;}
  if(e.code==='KeyR'&&['playing','paused','result'].includes(state)&&!e.repeat){e.preventDefault();retry();return;}
